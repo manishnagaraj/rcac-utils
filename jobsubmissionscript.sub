@@ -1,0 +1,93 @@
+#!/bin/bash -l
+
+# Copyright (c) 2025, Amogh S. Joshi
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+# FILENAME:  jobsubmissionfile
+
+
+#SBATCH -A kaushik
+#SBATCH --nodes=1 
+#SBATCH --time=6:00:00
+#SBATCH --job-name $(whoami)_%j
+#SBATCH --gpus-per-node=1
+#SBATCH --output=${HOME}/joboutput/${SLURM_JOB_NAME}_%j.out
+#SBATCH --error=${HOME}/joboutput/${SLURM_JOB_NAME}_%j.out
+#SBATCH --signal=B:USR1@60
+
+
+# The sbatch comments above are a special kind of comment that act as arguments to the sbatch command unless superceded by cmd-line args in the launch file.
+# DO NOT MODIFY THESE SPECIAL COMMENTS
+
+# signal handling function and trap. DO NOT MODIFY
+# function to send SIGUSR1 to child process (the python script being executed)
+function sig_handler(){
+	kill -SIGUSR1 $PID
+}
+# trap SIGUSR1 coming from sbatch and pass to python script
+trap 'sig_handler' SIGUSR1
+
+# Print the hostname of the compute node on which this job is running.
+echo -e "Hostname: $(/bin/hostname)\n"
+
+# usage help message
+usage() {
+	echo "usage: $0 [-h] [-e ENV_NAME] [-d JOB_SCRIPT_DIR]" 1>&2;
+	echo "-h: Display help message"
+	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
+	echo "-d JOB_SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
+	exit 1;
+}
+
+# arg init
+ENV_NAME=base
+SCRIPT_DIR=$HOME
+
+# read args
+while getopts "he:d:" opts; do
+	case "${opts}" in
+		h)	usage;;
+		e)	ENV_NAME=$OPTARG;;
+		d)  SCRIPT_DIR=$OPTARG;;
+		*)	usage;;
+	esac
+done
+
+# necessary init
+module purge
+module load cuda
+module load conda
+conda activate $ENV_NAME
+
+# system var setup
+UNAME=$(whoami)
+
+# Change to the directory containing job script
+cd $SCRIPT_DIR
+
+# actual call to your python script (uncomment the desired version, comment the other one)
+# version 1: simple call, OS signalling from SLURM not implemented
+# python helloWorld.py
+
+# version 2: better call, OS signalling from SLURM enabled (implementation to catch and process signal is to be done by the user)
+python helloWorld.py &
+PID="$!"
+wait "${PID}"
