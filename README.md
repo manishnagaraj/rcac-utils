@@ -26,11 +26,25 @@ Verify your credentials using BoilerKey, and you're good to go! Logging in to th
 type $PATH_TO_.SSH\id_rsa.pub | ssh $USER@$CLUSTER_NAME.rcac.purdue.edu "cat >> .ssh/authorized_keys"
 ```
 
+<h3> Cloning and Setup </h3>
+Clone this repo into your user space on the cluster by copying the ssh URL and then using
+
+```
+git clone $REPO_URL
+```
+Navigate to the repo and perform initial setup using
+
+```
+cd $PATH_TO_REPO
+bash setup.bash
+```
+NOTE: For path invariance, the setup script will automatically move the cloned repo to your home directory (<code>/home/$USER</code>)
+
 <h3> Scripts </h3>
 <h4> Setup Conda </h4>
 RCAC clusters require use of the IT-managed conda module loadable using Lmod. While installing conda locally in your own directory <code>/home/$USER/</code> is possible, environments installed using your own conda installation will not be importable in code, i.e., they will not work.
 
-To transfer existing environments from other machines onto RCAC clusters, export the env as a yml file using
+To transfer existing environments from other machines onto RCAC clusters, on the other machine, export the env as a yml file using
 
 ```
 conda env export $ENVNAME>$FILENAME.yml
@@ -111,7 +125,19 @@ By default, backups in FORTRESS are saved in your FORTRESS home directory (<code
     <li> All tar archives are to be saved in <code>/home/$USER/archives/</code> </li>
     <li> All other files (note that these should only be large files such as datasets, model weights, etc.) are to be saved in <code>/home/$USER/archives/</code> </li>
 </ol>
-To backup to FORTRESS, use the provided script <code>backup.bash</code>. A detailed list of command line args accepted by this script may be found using:
+You are free to use whatever directory structure you want inside these two directories.
+
+To backup to FORTRESS, use
+
+```
+ bash backup.bash $FILES_TO_BACKUP
+```
+NOTE: The backup script accepts wildcards (the * character), i.e., if you want to backup multiple files named file1, file2, ...., filen, then all of them can be backed up in a single call to <code>backup.bash</code> using
+
+```
+ bash backup.bash file*
+```
+A detailed list of command line args accepted by this script may be found using:
 
 ```
 bash backup.bash -h

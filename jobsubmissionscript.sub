@@ -37,11 +37,12 @@
 # The sbatch comments above are a special kind of comment that act as arguments to the sbatch command unless superceded by cmd-line args in the launch file.
 # DO NOT MODIFY THESE SPECIAL COMMENTS
 
-# signal handling function and trap. DO NOT MODIFY
-# function to send SIGUSR1 to child process (the python script being executed)
+# signal trap and fwding function. DO NOT MODIFY
+# function to fwd SLURM's SIGUSR1 to child process (the python script being executed)
 function sig_handler(){
 	kill -SIGUSR1 $PID
 }
+
 # trap SIGUSR1 coming from sbatch and pass to python script
 trap 'sig_handler' SIGUSR1
 
@@ -50,23 +51,26 @@ echo -e "Hostname: $(/bin/hostname)\n"
 
 # usage help message
 usage() {
-	echo "usage: $0 [-h] [-e ENV_NAME] [-d JOB_SCRIPT_DIR]" 1>&2;
+	echo "usage: $0 [-h] [-e ENV_NAME] [-d JOB_SCRIPT_DIR] [-f SCRIPT_FILE]" 1>&2;
 	echo "-h: Display help message"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
 	echo "-d JOB_SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
+	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	exit 1;
 }
 
 # arg init
 ENV_NAME=base
 SCRIPT_DIR=$HOME
+SCRIPT_FILE=helloWorld.py
 
 # read args
-while getopts "he:d:" opts; do
+while getopts "he:d:f:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		e)	ENV_NAME=$OPTARG;;
 		d)  SCRIPT_DIR=$OPTARG;;
+		f)	SCRIPT_FILE=$OPTARG;;
 		*)	usage;;
 	esac
 done
@@ -77,17 +81,14 @@ module load cuda
 module load conda
 conda activate $ENV_NAME
 
-# system var setup
-UNAME=$(whoami)
-
 # Change to the directory containing job script
 cd $SCRIPT_DIR
 
 # actual call to your python script (uncomment the desired version, comment the other one)
 # version 1: simple call, OS signalling from SLURM not implemented
-# python helloWorld.py
+# python $SCRIPT_FILE
 
 # version 2: better call, OS signalling from SLURM enabled (implementation to catch and process signal is to be done by the user)
-python helloWorld.py &
+python $SCRIPT_FILE &
 PID="$!"
 wait "${PID}"

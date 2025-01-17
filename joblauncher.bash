@@ -25,8 +25,7 @@
 
 
 # necessary imports
-source ./config.bash
-
+source config_rcac.bash
 
 # system constants. DO NOT CHANGE
 QUEUE=kaushik
@@ -41,10 +40,11 @@ ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
 
 # usage help message
 usage() {
-	echo "usage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-d JOB_SCRIPT_DIR] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-t MAX_TIME]" 1>&2;
+	echo "usage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-t MAX_TIME]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
-	echo "-d JOB_SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
+	echo "-d SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
+	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
 	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1."
 	echo "-c N_CPUS: Number of CPUs required. Defaults to 32."
@@ -61,13 +61,15 @@ MAX_TIME=6:00:00
 ENV_NAME=base
 JOB_SUBMISSION_SCRIPT=jobsubmissionscript.sub
 SCRIPT_DIR=$HOME
+SCRIPT_FILE=helloWorld.py
 
 # read args
-while getopts "hj:d:e:g:c:p:t:" opts; do
+while getopts "hj:d:f:e:g:c:p:t:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		j)	JOB_SUBMISSION_SCRIPT=$OPTARG;;
 		d)  SCRIPT_DIR=$OPTARG;;
+		f)	SCRIPT_FILE=$OPTARG;;
 		e)	ENV_NAME=$OPTARG;;
 		g)  N_GPUS=$OPTARG;;
 		c)  N_CPUS=$OPTARG;;
@@ -111,4 +113,4 @@ sbatch \
 	-p $PARTITION -q normal \
 	--job-name="${JOB_NAME}_%j" --output="${OUT_FILE}_%j.log" --error="${ERR_FILE}_%j.log" \
 	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@60 --nodes=$N_NODES -n$N_CPUS -A $QUEUE \
-	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -d $SCRIPT_DIR -e $ENV_NAME
+	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -e $ENV_NAME -d $SCRIPT_DIR -f $SCRIPT_FILE

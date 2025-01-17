@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -i
 
 # Copyright (c) 2025, Amogh S. Joshi
 
@@ -21,25 +21,42 @@
 # SOFTWARE.
 
 
-# FILENAME:  config
+# FILENAME:  setup
 
 
-# system constants. DO NOT MODIFY
-QUEUE=kaushik
-CONFIG_PATH=$HOME/rcac-utils
-USER=$(whoami)
-CLUSTER=$(echo $(hostname) | cut -c 9- | awk -F '.rcac' '{print $1}')
+# script vars. DO NOT MODIFY
+FLAG=false
 
-# Text colour escape codes. DO NOT MODIFY
-white='\033[1;37m'
-red='\033[1;31m'
-green='\033[1;32m'
-yellow='\033[1;33m'
-nc='\033[0m'
+#
+echo -e "Parsing paths...\t"
 
-# Gautschi
-gautschi_ai=112
-gautschi_cpu=192
-gautschi_highmem=192
-gautschi_smallgpu=128
-gautschi_profiling=192
+# verify installation
+INSTALL_DIR=$(find $HOME -name rcac-utils)
+if [[ ! $INSTALL_DIR == "/home/${USER}/rcac-utils" ]]; then
+	echo -ne "[\033[1;33mWARNING\033[0m] Path Error: rcac-utils not installed in /home/${USER}. Moving...\t"
+	mv $INSTALL_DIR /home/${USER}
+else
+	echo -ne "Verifying rcac-utils installation...\t"
+fi
+
+# necessary loading. DO NOT MODIFY
+source /home/$USER/rcac-utils/config_rcac.bash
+
+echo -e "[${green}DONE${nc}]"
+
+# add rcac-utils to $PATH if not already added
+if [[ ! $PATH == *"rcac-utils"* ]]; then
+	echo -ne "Setting up paths...\t\t\t"
+	echo 'export PATH="/home/'${USER}'/rcac-utils:$PATH"' >> $HOME/.bashrc
+	FLAG=true
+	echo -e "[${green}DONE${nc}]"
+else
+	echo -e "[${green}INFO${nc}] rcac-utils already in \$PATH. Nothing to do."
+fi
+
+echo -ne "Cleaning up...\t\t\t\t"
+echo -e "[${green}DONE${nc}]"
+
+if $FLAG; then
+	echo -e "[${green}INFO${nc}] User action required: To complete setup, run\n\n\tsource $HOME/.bashrc\n"
+fi

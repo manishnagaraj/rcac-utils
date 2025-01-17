@@ -14,4 +14,3 @@ if __name__ == "__main__":
     signal.signal(signal.SIGUSR1, handler)
     while True:
         pass
-    # time.sleep(200)

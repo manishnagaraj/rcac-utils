@@ -23,6 +23,9 @@
 
 # FILENAME:  conda_env_installer
 
+# necessary loading. DO NOT MODIFY
+source config_rcac.bash
+
 # system constants. DO NOT CHANGE
 USER=$(whoami)
 FLAG=false
@@ -55,7 +58,7 @@ done
 cd $HOME
 
 if [ -d "anaconda3" ]; then
-    read -p "Anaconda installation found! This conflicts with Lmod module conda and causes job failures. Should it be deleted? (y/n) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
+    read -p " $( echo -e "[${yellow}WARNING${nc}] Anaconda installation found! This conflicts with Lmod module conda and causes job failures. Should it be deleted? (y/n) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
     if $FLAG; then
         exit 1
     fi
@@ -73,4 +76,4 @@ module load cuda
 # create env
 conda env create -n $ENV_NAME --file $YML_PATH/${YML_FILENAME}
 
-echo "Done"
+echo -e "[${green}DONE${nc}]"

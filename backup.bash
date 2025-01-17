@@ -40,7 +40,7 @@ ARCHIVE_PATH=/home/${USER}/archives/
 shopt -s nullglob
 
 # necessary loading. DO NOT MODIFY
-source ./config.bash
+source config_rcac.bash
 
 # usage help message
 usage() {
