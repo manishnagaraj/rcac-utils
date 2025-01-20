@@ -40,7 +40,7 @@ ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
 
 # usage help message
 usage() {
-	echo "usage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-t MAX_TIME]" 1>&2;
+	echo "usage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-p PARTITION] [-t MAX_TIME]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
 	echo "-d SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
