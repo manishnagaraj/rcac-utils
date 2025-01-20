@@ -21,11 +21,10 @@
 # SOFTWARE.
 
 
-# FILENAME:  backup
+# FILENAME:  retrieve_backup
 
 
 # script vars. DO NOT MODIFY
-FLAG=false
 TAR=false
 TMUX=false
 filecnt=0
@@ -43,20 +42,21 @@ source config_rcac.bash
 
 # usage help message
 usage() {
-	echo -e "Script to backup files to Fortress tape archive\n"
-	echo -e "[${yellow}WARNING${nc}]: Fortress is a tape archive and works best with a few, large files. Large sets of small files should be compressed into archives with utilities such as htar"
-	echo "usage: $0 [-h] [-t FILE_TYPE] [-d DEST_DIR] [-n TAR_FILE_NAME] SRC_FILES" 1>&2;
+	echo -e "Script to retrieve backup files from Fortress tape archive"
+	echo -e "[${yellow}WARNING${nc}]: Fortress is a tape archive. Recovering files from FORTRESS can, therefore, take a very long time."
+	echo "usage: $0 [-h] [-t FILE_TYPE] [-d SRC_DIR] [-n DEST_DIR] SRC_FILES" 1>&2;
 	echo "-h: Display help message"
-	echo -e "-t FILE_TYPE: Type of file to be transferred to Fortress.\n\tExpected values:\n\t'a': File type archive\n\t'f': All other file types\n\tDefaults to 'a'"
-	echo "-d DEST_DIR: Name of the backup destination directory."
-	echo "-n TAR_FILE_NAME: Name of the backup tar file. Defaults to 'archive.tar'"
-	echo "SRC_FILES: Absolute path of the file(s) to be backed up. This is a REQUIRED argument"
+	echo -e "-t FILE_TYPE: Type of file to be retrieved from Fortress.\n\tExpected values:\n\t'a': File type archive\n\t'f': All other file types\n\tDefaults to 'a'"
+	echo "-d SRC_DIR: Path of the backup to be retrieved, relative to the archives/ or largeFiles/ directory"
+	echo "-n DEST_DIR: Absolute path of the retrived backup's destination directory. Defaults to  /scratch/${CLUSTER}/${USER}"
+	echo "SRC_FILES: Files to be retrieved from FORTRESS. This is a REQUIRED argument"
 	exit 1;
 }
 
 # arg init
 FILE_TYPE=a
-DEST_DIR=""
+SRC_DIR=""
+DEST_DIR="/scratch/${CLUSTER}/${USER}"
 TAR_FILE="archive.tar"
 SRC_FILES=""
 
@@ -65,7 +65,7 @@ while getopts "ht:d:n:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		t)	FILE_TYPE=$OPTARG;;
-		d)  DEST_DIR=$OPTARG;;
+		d)  SRC_DIR=$OPTARG;;
 		n)	TAR_FILE=$OPTARG;;
 		*)	usage;;
 	esac
@@ -74,13 +74,12 @@ done
 # read all filenames to be backed up
 shift $(( OPTIND - 1 ))
 SRC_FILES=$@
-echo "src files: ${SRC_FILES}"
 
 # resolve destination path
 if [[ $FILE_TYPE == "a" ]]; then
-	DEST_PATH=/home/${USER}/archives/${DEST_DIR}
+	SRC_PATH=/home/${USER}/archives/${SRC_DIR}
 else
-	DEST_PATH=/home/${USER}/largeFiles/${DEST_DIR}
+	SRC_PATH=/home/${USER}/largeFiles/${SRC_DIR}
 fi
 
 # sanity checks
@@ -92,7 +91,7 @@ fi
 
 # idiot-proof source file specification
 if [[ $SRC_FILES == "" ]]; then
-	echo -e "[${red}FATAL${nc}] $0: Did not specify file to be backed up"
+	echo -e "[${red}FATAL${nc}] $0: Did not specify file to retrieve"
 	exit 1
 fi
 
@@ -108,47 +107,29 @@ if $TMUX; then
 	exit
 fi
 
-#
-# perf constraint. tar file for user if they can't
-echo -e "[${yellow}WARNING${nc}]: ${yellow}Fortress is a tape archive and works best with a few, large files. Large sets of small files should be compressed into archives with utilities such as htar${nc}"
-read -p "Are you attempting to transfer several small files? (y/n): " confirm && [[ $confirm == [nN] || $confirm == [nN][oO] ]] || FLAG=true
-if $FLAG; then
-	echo -e "[${yellow}WARNING${nc}] Transferring several small files may significantly impact backup performance"
-	read -p "$( echo -e "["${green}"INFO"${nc}"] Would you like to tar the files before backup? (y/n): ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || TAR=true
+# retrieve files over sftp
+files=($SRC_FILES)
+sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
+$(for f in "${files[@]}"; do echo "get -P ${SRC_PATH}$f $DEST_DIR"; done)
+exit
+EOF
+
+# auto untarring
+if [[ $FILE_TYPE -eq "a" ]]; then
+	read -p "$( echo -e "["${green}"INFO"${nc}"] Would you like to untar the retrieved files? (y/n): ")" confirm && [[ $confirm == [nN] || $confirm == [nN][oO] ]] || TAR=true
 	if $TAR; then
-		echo -e "[${red}FATAL${nc}] Please read the warning message and try again. Aborting transfer..."
-		exit 1
-	else
-		TAR=true
+		echo -ne "[${green}INFO${nc}] Untarring...\t\t\t"
+		files=($SRC_FILES)
+		cd $DEST_DIR
+		for f in "${files[@]}"; do
+			tar -xf ${f} -C $DEST_DIR
+		done
+		echo -e "[${green}DONE${nc}]"
+		# path and file cleanup
+		echo -ne "[${green}INFO${nc}] Cleaning up...\t\t"
+		mv ./$DEST_DIR/* ./
+		rm -rf ./$(echo $DEST_DIR | cut -c 2- | awk -F '/' '{print $1}')
+		rm -f ./$SRC_FILES
+		echo -e "[${green}DONE${nc}]"
 	fi
 fi
-
-# count number of files to be tarred
-let filecnt=$(grep -o '.tar' <<< "$SRC_FILES" | wc -l)
-
-# tar files
-if $TAR; then
-	echo -e "[${green}INFO${nc}] Tarring ${filecnt} files..."
-	tar -cf $TAR_FILE $SRC_FILES
-	DEST_PATH=/home/${USER}/archives/${DEST_DIR}
-	FILE_TYPE=a
-fi
-
-# perform sftp txn
-if [[ $FILE_TYPE == "a" ]]; then
-	sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
-	put -P ${TAR_PATH}/${TAR_FILE} $DEST_PATH
-	exit
-EOF
-else
-	files=($SRC_FILES)
-	sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
-	$(for f in "${files[@]}"; do echo "put -P $f $DEST_PATH"; done)
-	exit
-EOF
-fi
-
-# cleanup
-echo -ne "[${green}INFO${nc}] Cleaning up...\t"
-rm -f ${TAR_PATH}/${TAR_FILE}
-echo -e "[${green}DONE${nc}]"

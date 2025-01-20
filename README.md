@@ -87,7 +87,7 @@ A Job Submission Script is supposed to do three main things:
   ```
   python helloWorld.py
   ```
-  NOTE: SLURM provides functionality to send an OS signal to a job "n" seconds before termination (n $\in [0, 65535]$). To use this functionality, simply uncomment the corresponding call in the job submission script.
+  NOTE: SLURM provides functionality to send an OS signal to a job "n" seconds before termination (n $\in [0, 65535]$). This functionality is enabled by default (See the minimum working example given in the script helloWorld.py)
   </li>
 </ol>
 More information on job submission scripts, specifically for RCAC clusters, may be found <a href="https://www.rcac.purdue.edu/knowledge/gautschi/run/slurm/script">here</a>.
@@ -123,7 +123,7 @@ It is advisable to backup all code, result, and render files. Files can be backe
 By default, backups in FORTRESS are saved in your FORTRESS home directory (<code>/home/$USER/</code>). For convenience, we impose the following path organisation:
 <ol>
     <li> All tar archives are to be saved in <code>/home/$USER/archives/</code> </li>
-    <li> All other files (note that these should only be large files such as datasets, model weights, etc.) are to be saved in <code>/home/$USER/archives/</code> </li>
+    <li> All other files (note that these should only be large files such as datasets, model weights, etc.) are to be saved in <code>/home/$USER/largeFiles/</code> </li>
 </ol>
 You are free to use whatever directory structure you want inside these two directories.
 
@@ -143,4 +143,12 @@ A detailed list of command line args accepted by this script may be found using:
 bash backup.bash -h
 ```
 If you have never used tar/server keytabs/sftp/tape archives before, the provided script is designed to guide you through the steps needed to backup data to FORTRESS. Simply follow the instructions on screen!
+
+<h4> Retrieving Backups </h4>
+To retrieve backed-up file(s), use the script <code>retrieve_backup.bash</code>. A detailed list of command line args accepted by this script may be found using:
+
+```
+bash retrieve_backup.bash -h
+```
+NOTE: This script provides auto-untarring functionality when retrieving tar archives.
 
