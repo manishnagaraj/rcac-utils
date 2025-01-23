@@ -58,7 +58,7 @@ done
 cd $HOME
 
 if [ -d "anaconda3" ]; then
-    read -p " $( echo -e "[${yellow}WARNING${nc}] Anaconda installation found! This conflicts with Lmod module conda and causes job failures. Should it be deleted? (y/n) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
+    read -p " $( echo -e "[${yellow}WARNING${nc}] Anaconda installation found! This conflicts with Lmod module conda and causes job failures. Should it be deleted? (y/n) ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
     if $FLAG; then
         exit 1
     fi
