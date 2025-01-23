@@ -43,7 +43,7 @@ usage() {
 	echo "usage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-p PARTITION] [-t MAX_TIME]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
-	echo "-d SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
+	echo "-d SCRIPT_DIR: Absolute path to directory containing the python/other code script to be run. Defaults to '${HOME}'"
 	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
 	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1."

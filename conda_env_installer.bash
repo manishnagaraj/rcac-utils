@@ -50,6 +50,8 @@ while getopts "hf:p:n:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		f)	YML_FILENAME=$OPTARG;;
+        p)  YML_PATH=$OPTARG;;
+        n)  ENV_NAME=$OPTARG;;
 		*)	usage;;
 	esac
 done
