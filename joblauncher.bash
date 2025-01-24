@@ -40,41 +40,47 @@ ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
 
 # usage help message
 usage() {
-	echo "usage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-p PARTITION] [-t MAX_TIME]" 1>&2;
+	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
+	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
 	echo "-d SCRIPT_DIR: Absolute path to directory containing the python/other code script to be run. Defaults to '${HOME}'"
 	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
-	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1."
-	echo "-c N_CPUS: Number of CPUs required. Defaults to 32."
+	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1"
+	echo -e "-c N_CPUS: Number of CPUs required. Defaults to 14.\n[${yellow}WARNING${nc}] Gautschi restricts N_CPUS to 14 per requested GPU. Supply this arg accordingly"
 	echo "-p PARTITION: Name of partition to run on. Defaults to 'ai'"
-	echo -e "-t MAX_TIME: Max job time. After executing for this much time, the job is killed.\n\tSpecify in dd-hh:mm:ss format. Defaults to 6:00:00 (6 hrs)\n\tUse the USR1 signal as shown in helloWorld.py to save checkpoints before termination."
+	echo -e "-T MAX_TIME: Max job time. After executing for this much time, the job is killed.\n\tSpecify in dd-hh:mm:ss format. Defaults to 6:00:00 (6 hrs)"
+	echo -e "-s SIG_INTERVAL: SIGUSR1 is sent to the user script these many seconds before MAX_TIME is reached. Supported values: [0, 65535]. Defaults to 60.\n[${yellow}WARNING${nc}] Handling of OS signal is left to the user\n"
 	exit 1;
 }
 
 # arg init
 N_GPUS=1
-N_CPUS=32
+N_CPUS=14
 PARTITION=ai
 MAX_TIME=6:00:00
 ENV_NAME=base
 JOB_SUBMISSION_SCRIPT=jobsubmissionscript.sub
+SCRIPT_TYPE=python
 SCRIPT_DIR=$HOME
 SCRIPT_FILE=helloWorld.py
+SIG_INTERVAL=60
 
 # read args
-while getopts "hj:d:f:e:g:c:p:t:" opts; do
+while getopts "hj:t:d:f:e:g:c:p:T:s:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		j)	JOB_SUBMISSION_SCRIPT=$OPTARG;;
+		t)	SCRIPT_TYPE=$OPTARG;;
 		d)  SCRIPT_DIR=$OPTARG;;
 		f)	SCRIPT_FILE=$OPTARG;;
 		e)	ENV_NAME=$OPTARG;;
 		g)  N_GPUS=$OPTARG;;
 		c)  N_CPUS=$OPTARG;;
 		p)	PARTITION=$OPTARG;;
-		t)	MAX_TIME=$OPTARG;;
+		T)	MAX_TIME=$OPTARG;;
+		s)	SIG_INTERVAL=$OPTARG;;
 		*)	usage;;
 	esac
 done
@@ -90,6 +96,14 @@ if [[ $N_NODES -gt 2 ]]; then
 		echo -e "[${red}FATAL${nc}] Attempted multi-node run with non-MPI workload. Exiting..."
 		exit 1
 	fi
+fi
+
+# sanity check
+SUPPORTED_SCRIPTS=("bash", "python")
+if [[ ! " ${SUPPORTED_SCRIPTS[@]} " =~ " $SCRIPT_TYPE " ]]; then
+	echo -e "[${red}FATAL${nc}] Unsupported script type"
+	usage
+	exit 1
 fi
 
 # call to sbatch to launch the job
@@ -112,5 +126,5 @@ fi
 sbatch \
 	-p $PARTITION -q normal \
 	--job-name="${JOB_NAME}_%j" --output="${OUT_FILE}_%j.log" --error="${ERR_FILE}_%j.log" \
-	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@60 --nodes=$N_NODES -n$N_CPUS -A $QUEUE \
-	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -e $ENV_NAME -d $SCRIPT_DIR -f $SCRIPT_FILE
+	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@${SIG_INTERVAL} --nodes=$N_NODES -n$N_CPUS -A $QUEUE \
+	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -e $ENV_NAME -t $SCRIPT_TYPE -d $SCRIPT_DIR -f $SCRIPT_FILE

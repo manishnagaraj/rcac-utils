@@ -152,3 +152,19 @@ bash retrieve_backup.bash -h
 ```
 NOTE: This script provides auto-untarring functionality when retrieving tar archives.
 
+<h3> Example </h3>
+Consider the following case:
+
+The file <code>setup.bash</code> has been executed and all paths have been setup correctly (Note that at this point, this repository will be located in <code>/home/$USER</code>). The script file <code>file.py</code>, located in directory <code>/home/$USER/test</code> is to be executed in a conda environment named <code>env</code>.
+
+Let us assume that the script requires 2 GPU cards, and as many CPUs as possible (14*N_GPU=28. For info on why 28, read the help message of joblauncher.bash)
+
+Let us also assume that the script is to be run on the "ai" partition and that the user estimates a max runtime of 2.5 days. Additionally, the user determines that, in case the job runs for longer than 2.5 days, the necessary checkpoint and metadata saving will take ~97 seconds.
+
+Given these considerations, the job should be launched using the following command:
+
+```
+bash joblauncher.bash -j jobsubmissionscript.sub -t python -d ~/test/ -f file.py -e env -g 2 -c 28 -p ai -T 2-12:00:00 -s 97
+```
+NOTE: In most cases, a majority of the supported command line arguments will be left at their default values. All the arguments supported by the file <code>joblauncher.bash</code> are expanded in the above example, just for convenience.
+

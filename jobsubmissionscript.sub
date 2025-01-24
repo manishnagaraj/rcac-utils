@@ -51,9 +51,10 @@ echo -e "Hostname: $(/bin/hostname)\n"
 
 # usage help message
 usage() {
-	echo "usage: $0 [-h] [-e ENV_NAME] [-d JOB_SCRIPT_DIR] [-f SCRIPT_FILE]" 1>&2;
+	echo "usage: $0 [-h] [-e ENV_NAME] [-t SCRIPT_TYPE] [-d JOB_SCRIPT_DIR] [-f SCRIPT_FILE]" 1>&2;
 	echo "-h: Display help message"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
+	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
 	echo "-d JOB_SCRIPT_DIR: Absolute path to directory containing the script to be run. Defaults to '${HOME}'"
 	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	exit 1;
@@ -62,13 +63,15 @@ usage() {
 # arg init
 ENV_NAME=base
 SCRIPT_DIR=$HOME
+SCRIPT_TYPE=python
 SCRIPT_FILE=helloWorld.py
 
 # read args
-while getopts "he:d:f:" opts; do
+while getopts "he:t:d:f:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		e)	ENV_NAME=$OPTARG;;
+		t)	SCRIPT_TYPE=$OPTARG;;
 		d)  SCRIPT_DIR=$OPTARG;;
 		f)	SCRIPT_FILE=$OPTARG;;
 		*)	usage;;
@@ -86,9 +89,9 @@ cd $SCRIPT_DIR
 
 # actual call to your python script (uncomment the desired version, comment the other one)
 # version 1: simple call, OS signalling from SLURM not implemented
-# python $SCRIPT_FILE
+# $SCRIPT_TYPE $SCRIPT_FILE
 
-# version 2: better call, OS signalling from SLURM enabled (implementation to catch and process signal is to be done by the user)
-python $SCRIPT_FILE &
+# version 2: better call, OS signalling from SLURM enabled (exception catching and handling left to the user)
+$SCRIPT_TYPE $SCRIPT_FILE &
 PID="$!"
 wait "${PID}"
