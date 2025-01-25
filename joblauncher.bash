@@ -99,7 +99,7 @@ if [[ $N_NODES -gt 2 ]]; then
 fi
 
 # sanity check
-SUPPORTED_SCRIPTS=("bash", "python")
+SUPPORTED_SCRIPTS=("bash" "python")
 if [[ ! " ${SUPPORTED_SCRIPTS[@]} " =~ " $SCRIPT_TYPE " ]]; then
 	echo -e "[${red}FATAL${nc}] Unsupported script type"
 	usage

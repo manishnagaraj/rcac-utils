@@ -66,7 +66,7 @@ tmux set -p @mytitle "squeue"
 
 # split window vertically
 tmux split-window -v
-tmux send-keys -t $SESSION_NAME 'htop' C-m
+tmux send-keys -t $SESSION_NAME 'squeue -a -p ai' C-m
 
 #rename pane 1
 tmux set -p @mytitle "cpu_load"

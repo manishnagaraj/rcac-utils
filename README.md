@@ -2,6 +2,9 @@
 
 This repository contains bash scripts for launching, orchestrating, managing, and monitoring jobs on NRL's RCAC clusters. RCAC uses the Simple Linux Utility for Resource Management (SLURM), a system providing job scheduling and job management on compute clusters. With SLURM, a user requests resources and submits a job to a queue. The system will then take jobs from queues, allocate the necessary nodes, and execute them.
 
+This README provides an overview of the prerequisites for using the cluster, a description of all provided scripts, and a few examples and common utilities.
+
+---
 <h3> Prerequisites </h3>
 <h4> Access to the Cluster </h4>
 Please verify you have access to the cluster before attempting to log in!
@@ -26,6 +29,7 @@ Verify your credentials using BoilerKey, and you're good to go! Logging in to th
 type $PATH_TO_.SSH\id_rsa.pub | ssh $USER@$CLUSTER_NAME.rcac.purdue.edu "cat >> .ssh/authorized_keys"
 ```
 
+---
 <h3> Cloning and Setup </h3>
 Clone this repo into your user space on the cluster by copying the ssh URL and then using
 
@@ -40,6 +44,7 @@ bash setup.bash
 ```
 NOTE: For path invariance, the setup script will automatically move the cloned repo to your home directory (<code>/home/$USER</code>)
 
+---
 <h3> Scripts </h3>
 <h4> Setup Conda </h4>
 RCAC clusters require use of the IT-managed conda module loadable using Lmod. While installing conda locally in your own directory <code>/home/$USER/</code> is possible, environments installed using your own conda installation will not be importable in code, i.e., they will not work.
@@ -152,7 +157,8 @@ bash retrieve_backup.bash -h
 ```
 NOTE: This script provides auto-untarring functionality when retrieving tar archives.
 
-<h3> Example </h3>
+---
+<h3> Examples </h3>
 Consider the following case:
 
 The file <code>setup.bash</code> has been executed and all paths have been setup correctly (Note that at this point, this repository will be located in <code>/home/$USER</code>). The script file <code>file.py</code>, located in directory <code>/home/$USER/test</code> is to be executed in a conda environment named <code>env</code>.
@@ -166,5 +172,31 @@ Given these considerations, the job should be launched using the following comma
 ```
 bash joblauncher.bash -j jobsubmissionscript.sub -t python -d ~/test/ -f file.py -e env -g 2 -c 28 -p ai -T 2-12:00:00 -s 97
 ```
+
+Keeping all other conditions the same, if the script were to change from <code>file.py</code> to <code>file.bash</code>, then the job should be launched using
+
+```
+bash joblauncher.bash -j jobsubmissionscript.sub -t bash -d ~/test/ -f file.bash -e env -g 2 -c 28 -p ai -T 2-12:00:00 -s 97
+```
 NOTE: In most cases, a majority of the supported command line arguments will be left at their default values. All the arguments supported by the file <code>joblauncher.bash</code> are expanded in the above example, just for convenience.
+
+---
+<h3> Common Utilities </h3>
+To display a list of your active jobs (running/enqueued), use
+
+```
+squeue -u $USER
+```
+
+If your job is waiting in the SLURM queue, you can get an estimate of its start time using
+
+```
+scontrol show job $JOB_ID | grep StartTime
+```
+
+To cancel a running/pending job, use
+
+```
+scancel $JOB_ID
+```
 
