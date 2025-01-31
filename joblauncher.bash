@@ -63,7 +63,7 @@ MAX_TIME=6:00:00
 ENV_NAME=base
 JOB_SUBMISSION_SCRIPT=jobsubmissionscript.sub
 SCRIPT_TYPE=python
-SCRIPT_DIR=$HOME
+SCRIPT_DIR=$HOME/rcac-utils
 SCRIPT_FILE=helloWorld.py
 SIG_INTERVAL=60
 
