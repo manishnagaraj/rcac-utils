@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 
-# FILENAME:  config
+# FILENAME:  config_rcac
 
 
 # Text colour escape codes. DO NOT MODIFY
@@ -32,14 +32,25 @@ yellow='\033[1;33m'
 nc='\033[0m'
 
 # system constants. DO NOT MODIFY
-QUEUE=kaushik
+QUEUE=cocosys
 USER=$(whoami)
 CONFIG_PATH=/home/${USER}/rcac-utils
 CLUSTER=$(echo $(hostname) | cut -c 9- | awk -F '.rcac' '{print $1}')
 
-# Gautschi
-gautschi_ai=112
-gautschi_cpu=192
-gautschi_highmem=192
-gautschi_smallgpu=128
-gautschi_profiling=192
+# Cluster constants. DO NOT MODIFY
+# Gautschi CPU cores/node
+gautschi_cpu_ai=112
+gautschi_cpu_cocosys=112
+gautschi_cpu_cpu=192
+gautschi_cpu_highmem=192
+gautschi_cpu_smallgpu=128
+gautschi_cpu_profiling=192
+
+# Cluster constants. DO NOT MODIFY
+# Gautschi GPU cards per node
+gautschi_gpu_ai=8
+gautschi_gpu_cocosys=8
+gautschi_gpu_cpu=0
+gautschi_gpu_highmem=0
+gautschi_gpu_smallgpu=2
+gautschi_gpu_profiling=0

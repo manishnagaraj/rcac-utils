@@ -28,9 +28,7 @@
 source config_rcac.bash
 
 # system constants. DO NOT CHANGE
-QUEUE=kaushik
-JOB_FILE_PATH=$HOME/rcac-utils
-USER=$(whoami)
+JOB_FILE_PATH=$CONFIG_PATH
 FLAG=false
 
 # file name setup
@@ -40,7 +38,7 @@ ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
 
 # usage help message
 usage() {
-	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL]" 1>&2;
+	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
 	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
@@ -49,6 +47,7 @@ usage() {
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
 	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1"
 	echo -e "-c N_CPUS: Number of CPUs required. Defaults to 14.\n[${yellow}WARNING${nc}] Gautschi restricts N_CPUS to 14 per requested GPU. Supply this arg accordingly"
+	echo "-q QUEUE: SLURM queue to launch job on. Supported values: kaushik, cocosys. Defaults to 'cocosys'"
 	echo "-p PARTITION: Name of partition to run on. Defaults to 'ai'"
 	echo -e "-T MAX_TIME: Max job time. After executing for this much time, the job is killed.\n\tSpecify in dd-hh:mm:ss format. Defaults to 6:00:00 (6 hrs)"
 	echo -e "-s SIG_INTERVAL: SIGUSR1 is sent to the user script these many seconds before MAX_TIME is reached. Supported values: [0, 65535]. Defaults to 60.\n[${yellow}WARNING${nc}] Handling of OS signal is left to the user\n"
@@ -68,7 +67,7 @@ SCRIPT_FILE=helloWorld.py
 SIG_INTERVAL=60
 
 # read args
-while getopts "hj:t:d:f:e:g:c:p:T:s:" opts; do
+while getopts "hj:t:d:f:e:g:c:q:p:T:s:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		j)	JOB_SUBMISSION_SCRIPT=$OPTARG;;
@@ -78,6 +77,7 @@ while getopts "hj:t:d:f:e:g:c:p:T:s:" opts; do
 		e)	ENV_NAME=$OPTARG;;
 		g)  N_GPUS=$OPTARG;;
 		c)  N_CPUS=$OPTARG;;
+		q)	QUEUE=$OPTARG;;
 		p)	PARTITION=$OPTARG;;
 		T)	MAX_TIME=$OPTARG;;
 		s)	SIG_INTERVAL=$OPTARG;;
@@ -85,25 +85,41 @@ while getopts "hj:t:d:f:e:g:c:p:T:s:" opts; do
 	esac
 done
 
-# essential computation
-DIV=$((${CLUSTER}_${PARTITION}))
-N_NODES=$(((($N_CPUS+$DIV-1))/$DIV))
-
-# protect compute resources!
-if [[ $N_NODES -gt 2 ]]; then
-	read -p "$( echo -e "["${yellow}"WARNING"${nc}"] The requested number of tasks requires more than one node. MPI-enabled code necessary to run multi-node workloads. Non-MPI code will result in wasted compute resources. Is your code MPI-enabled? (y/n): ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
-	if $FLAG; then
-		echo -e "[${red}FATAL${nc}] Attempted multi-node run with non-MPI workload. Exiting..."
-		exit 1
-	fi
-fi
-
-# sanity check
+# sanity checks
 SUPPORTED_SCRIPTS=("bash" "python")
 if [[ ! " ${SUPPORTED_SCRIPTS[@]} " =~ " $SCRIPT_TYPE " ]]; then
 	echo -e "[${red}FATAL${nc}] Unsupported script type"
 	usage
 	exit 1
+fi
+
+SUPPORTED_QUEUES=("kaushik" "cocosys")
+if [[ ! " ${SUPPORTED_QUEUES[@]} " =~ " $QUEUE " ]]; then
+	echo -e "[${red}FATAL${nc}] Unsupported queue"
+	exit 1
+fi
+
+if [[ ! $QUEUE == "cocosys" ]] && [[ $PARTITION == "cocosys" ]]; then
+	echo -e "[${red}FATAL${nc}] Jobs on cocosys partition must be launched from the cocosys queue!"
+	exit 1
+fi
+
+if [[ $N_GPUS -gt 0 ]] && [[ $((${CLUSTER}"_gpu_"${PARTITION})) -eq 0 ]]; then
+	echo -e "[${red}FATAL${nc}] GPU requirement specified, but selected partition ${PARTITION} does not contain GPUs!"
+	exit 1
+fi
+
+# essential computation
+DIV=$((${CLUSTER}"_cpu_"${PARTITION}))
+N_NODES=$(((($N_CPUS+$DIV-1))/$DIV))
+
+# protect compute resources!
+if [[ $N_NODES -ge 2 ]]; then
+	read -p "$( echo -e "["${yellow}"WARNING"${nc}"] The requested number of tasks requires more than one node. MPI-enabled code necessary to run multi-node workloads. Non-MPI code will result in wasted compute resources. Is your code MPI-enabled? (y/n): ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
+	if $FLAG; then
+		echo -e "[${red}FATAL${nc}] Attempted multi-node run with non-MPI workload. Exiting..."
+		exit 1
+	fi
 fi
 
 # call to sbatch to launch the job
