@@ -31,6 +31,10 @@ source config_rcac.bash
 JOB_FILE_PATH=$CONFIG_PATH
 FLAG=false
 
+# notification mail param setup
+MAIL=""
+MAIL_TYPE=BEGIN,END,FAIL,TIME_LIMIT_90
+
 # file name setup
 JOB_NAME="${USER}"
 OUT_FILE="${HOME}/joboutput/${JOB_NAME}"
@@ -38,7 +42,7 @@ ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
 
 # usage help message
 usage() {
-	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL]" 1>&2;
+	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-Q QoS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL] [-m]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
 	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
@@ -51,6 +55,7 @@ usage() {
 	echo "-p PARTITION: Name of partition to run on. Defaults to 'ai'"
 	echo -e "-T MAX_TIME: Max job time. After executing for this much time, the job is killed.\n\tSpecify in dd-hh:mm:ss format. Defaults to 6:00:00 (6 hrs)"
 	echo -e "-s SIG_INTERVAL: SIGUSR1 is sent to the user script these many seconds before MAX_TIME is reached. Supported values: [0, 65535]. Defaults to 60.\n[${yellow}WARNING${nc}] Handling of OS signal is left to the user\n"
+	echo "-m: Email notification flag. If set, sends email notification on job start, end, fail, and upon reaching 90% of specified job time limit"
 	exit 1;
 }
 
@@ -67,7 +72,7 @@ SCRIPT_FILE=helloWorld.py
 SIG_INTERVAL=60
 
 # read args
-while getopts "hj:t:d:f:e:g:c:q:p:T:s:" opts; do
+while getopts "hj:t:d:f:e:g:c:q:p:T:s:m" opts; do
 	case "${opts}" in
 		h)	usage;;
 		j)	JOB_SUBMISSION_SCRIPT=$OPTARG;;
@@ -81,6 +86,7 @@ while getopts "hj:t:d:f:e:g:c:q:p:T:s:" opts; do
 		p)	PARTITION=$OPTARG;;
 		T)	MAX_TIME=$OPTARG;;
 		s)	SIG_INTERVAL=$OPTARG;;
+		m)	MAIL=true;;
 		*)	usage;;
 	esac
 done
@@ -109,6 +115,14 @@ if [[ $N_GPUS -gt 0 ]] && [[ $((${CLUSTER}"_gpu_"${PARTITION})) -eq 0 ]]; then
 	exit 1
 fi
 
+# GPUS_PER_NODE=$N_GPUS
+# MAX_GPUS_PER_NODE=$((${CLUSTER}"_gpu_"${PARTITION}))
+# N_GPU_NODES=$(((($N_GPUS+$MAX_GPUS_PER_NODE-1))/$MAX_GPUS_PER_NODE))
+# if [[ $N_GPUS -gt $MAX_GPUS_PER_NODE ]]; then
+# 	DIV=$(( $N_NODES > $N_GPU_NODES ? $N_NODES : $N_GPU_NODES ))
+# 	GPUS_PER_NODE=$(($N_GPUS/$DIV))
+# fi
+
 # essential computation
 DIV=$((${CLUSTER}"_cpu_"${PARTITION}))
 N_NODES=$(((($N_CPUS+$DIV-1))/$DIV))
@@ -121,6 +135,9 @@ if [[ $N_NODES -ge 2 ]]; then
 		exit 1
 	fi
 fi
+
+# mail arg construction
+MAIL_ARGS="--mail-type=${MAIL_TYPE} --mail-user=${USER}@purdue.edu"
 
 # call to sbatch to launch the job
 # sbatch args are arranged thus:
@@ -141,6 +158,7 @@ fi
 #	For more info about sbatch, consult the sbatch man page using "man sbatch"
 sbatch \
 	-p $PARTITION -q normal \
+	${MAIL:+"$MAIL_ARGS"} \
 	--job-name="${JOB_NAME}_%j" --output="${OUT_FILE}_%j.log" --error="${ERR_FILE}_%j.log" \
 	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@${SIG_INTERVAL} --nodes=$N_NODES -n$N_CPUS -A $QUEUE \
 	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -e $ENV_NAME -t $SCRIPT_TYPE -d $SCRIPT_DIR -f $SCRIPT_FILE
