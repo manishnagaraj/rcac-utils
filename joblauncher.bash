@@ -115,14 +115,6 @@ if [[ $N_GPUS -gt 0 ]] && [[ $((${CLUSTER}"_gpu_"${PARTITION})) -eq 0 ]]; then
 	exit 1
 fi
 
-# GPUS_PER_NODE=$N_GPUS
-# MAX_GPUS_PER_NODE=$((${CLUSTER}"_gpu_"${PARTITION}))
-# N_GPU_NODES=$(((($N_GPUS+$MAX_GPUS_PER_NODE-1))/$MAX_GPUS_PER_NODE))
-# if [[ $N_GPUS -gt $MAX_GPUS_PER_NODE ]]; then
-# 	DIV=$(( $N_NODES > $N_GPU_NODES ? $N_NODES : $N_GPU_NODES ))
-# 	GPUS_PER_NODE=$(($N_GPUS/$DIV))
-# fi
-
 # essential computation
 DIV=$((${CLUSTER}"_cpu_"${PARTITION}))
 N_NODES=$(((($N_CPUS+$DIV-1))/$DIV))
