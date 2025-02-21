@@ -27,11 +27,11 @@
 # necessary imports
 source config_rcac.bash
 
-# system constants. DO NOT CHANGE
+# system constants. DO NOT MODIFY
 JOB_FILE_PATH=$CONFIG_PATH
 FLAG=false
 
-# notification mail param setup
+# notification mail param setup. DO NOT MODIFY
 MAIL=""
 MAIL_TYPE=BEGIN,END,FAIL,TIME_LIMIT_90
 
@@ -119,6 +119,16 @@ fi
 DIV=$((${CLUSTER}"_cpu_"${PARTITION}))
 N_NODES=$(((($N_CPUS+$DIV-1))/$DIV))
 
+# control requested CPU count
+REQ_CPUS_PER_GPU=$(($N_CPUS/$N_GPUS))
+MAX_CPUS_PER_GPU=$(($DIV/$((${CLUSTER}"_gpu_"${PARTITION}))))
+if [[ $REQ_CPUS_PER_GPU -gt $MAX_CPUS_PER_GPU ]] && [[ $PARTITION == "cocosys" ]]; then
+	echo -e "[${yellow}WARNING${nc}] Requested number of CPUs per GPU exceeds allowed threshold. Clamping CPU count at threshold value of ${MAX_CPUS_PER_GPU} CPUs/GPU"
+	CPUS_PER_GPU=$MAX_CPUS_PER_GPU
+else
+	CPUS_PER_GPU=$REQ_CPUS_PER_GPU
+fi
+
 # protect compute resources!
 if [[ $N_NODES -ge 2 ]]; then
 	read -p "$( echo -e "["${yellow}"WARNING"${nc}"] The requested number of tasks requires more than one node. MPI-enabled code necessary to run multi-node workloads. Non-MPI code will result in wasted compute resources. Is your code MPI-enabled? (y/n): ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
@@ -144,13 +154,13 @@ MAIL_ARGS="--mail-type=${MAIL_TYPE} --mail-user=${USER}@purdue.edu"
 #	-t [WALL_CLK_TIME] : Wall clock time. Once started, a job will run for exactly this much time before it is killed and its resurces are released. If a job terminates earlier than this time, then resources are released immediately.
 #	--signal=[SIG_NAME@TIME] : When this arg is used, SLURM sends signal "SIG_NAME" to the script "TIME" seconds before WALL_CLK_TIME is reached. To prevent data loss, users must implement methods to catch this signal to save state and perform other necessary cleanup.
 #	--nodes=[N_NODES] : Minimum number of nodes to allocate to the job. (Max nodes can also be spcified, consult man page)
-#	-n [N_TASKS] : Max number of tasks launched by the job.
-#	-A [QUEUE] : Name of queue to submit job to. NRL's queue is named "kaushik"
+#	--cpus-per-gpu [CPUS_PER_GPU] : Number of CPU cores to be allocated to the job per allocated GPU.
+#	-A [QUEUE] : Name of queue to submit job to. H200s are accessed using queue "cocosys". NRL's private queue is named "kaushik"
 #
 #	For more info about sbatch, consult the sbatch man page using "man sbatch"
 sbatch \
 	-p $PARTITION -q normal \
 	${MAIL:+"$MAIL_ARGS"} \
 	--job-name="${JOB_NAME}_%j" --output="${OUT_FILE}_%j.log" --error="${ERR_FILE}_%j.log" \
-	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@${SIG_INTERVAL} --nodes=$N_NODES -n$N_CPUS -A $QUEUE \
+	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@${SIG_INTERVAL} --nodes=$N_NODES --cpus-per-gpu=$CPUS_PER_GPU -A $QUEUE \
 	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -e $ENV_NAME -t $SCRIPT_TYPE -d $SCRIPT_DIR -f $SCRIPT_FILE

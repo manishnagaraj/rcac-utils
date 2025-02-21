@@ -26,7 +26,7 @@
 # necessary loading. DO NOT MODIFY
 source config_rcac.bash
 
-# system constants. DO NOT CHANGE
+# system constants. DO NOT MODIFY
 USER=$(whoami)
 FLAG=false
 
