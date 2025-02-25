@@ -66,6 +66,13 @@ A detailed list of command line args accepted by this script (or any of the scri
 ```
 bash joblauncher.bash -h
 ```
+
+NOTE: If your job is stuck in queue for a very long time, or if <code>scontrol show job $JOB_ID</code> contains the following message:
+```
+JobState=PENDING Reason=ReqNodeNotAvail,_Reserved_for_maintenance
+```
+then the cluster may be down. For updates regarding cluster status, please check the RCAC website <a href="https://www.rcac.purdue.edu/news/outages-and-maintenance?state=all&order_dir=desc">here</a>
+
 ---
 <h3> Scripts </h3>
 
