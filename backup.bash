@@ -24,12 +24,15 @@
 # FILENAME:  backup
 
 
+# necessary loading. DO NOT MODIFY
+source config_rcac.bash
+
 # script vars. DO NOT MODIFY
 FLAG=false
 TAR=false
 TMUX=false
 filecnt=0
-TAR_PATH=$(pwd)
+TAR_PATH=/scratch/${CLUSTER}/${USER}/
 
 # system paths. DO NOT MODIFY
 LARGE_FILE_PATH=/home/${USER}/largeFiles/
@@ -45,11 +48,12 @@ source config_rcac.bash
 usage() {
 	echo -e "Script to backup files to Fortress tape archive\n"
 	echo -e "[${yellow}WARNING${nc}]: Fortress is a tape archive and works best with a few, large files. Large sets of small files should be compressed into archives with utilities such as htar"
-	echo "usage: $0 [-h] [-t FILE_TYPE] [-d DEST_DIR] [-n TAR_FILE_NAME] SRC_FILES" 1>&2;
+	echo "usage: $0 [-h] [-t FILE_TYPE] [-d DEST_DIR] [-n TAR_FILE_NAME] [-p OVERRIDE_PATH] SRC_FILES" 1>&2;
 	echo "-h: Display help message"
-	echo -e "-t FILE_TYPE: Type of file to be transferred to Fortress.\n\tExpected values:\n\t'a': File type archive\n\t'f': All other file types\n\tDefaults to 'a'"
+	echo -e "-t FILE_TYPE: Type of file to be transferred to Fortress.\n\tExpected values:\n\t'a': File type archive\n\t'd': Filte type directory\n\t'f': All other file types\n\tDefaults to 'a'"
 	echo "-d DEST_DIR: Name of the backup destination directory."
 	echo "-n TAR_FILE_NAME: Name of the backup tar file. Defaults to 'archive.tar'"
+	echo -e "-p OVERRIDE_PATH: Override path to destination dir on Fortress.\n\t[${yellow}WARNING${nc}] Only use this arg if you know what you are doing!"
 	echo "SRC_FILES: Absolute path of the file(s) to be backed up. This is a REQUIRED argument"
 	exit 1;
 }
@@ -57,16 +61,18 @@ usage() {
 # arg init
 FILE_TYPE=a
 DEST_DIR=""
+OVERRIDE_PATH=""
 TAR_FILE="archive.tar"
 SRC_FILES=""
 
 # read args
-while getopts "ht:d:n:" opts; do
+while getopts "ht:d:n:p:" opts; do
 	case "${opts}" in
 		h)	usage;;
 		t)	FILE_TYPE=$OPTARG;;
 		d)  DEST_DIR=$OPTARG;;
 		n)	TAR_FILE=$OPTARG;;
+		p)	OVERRIDE_PATH=$OPTARG;;
 		*)	usage;;
 	esac
 done
@@ -77,7 +83,9 @@ SRC_FILES=$@
 echo "src files: ${SRC_FILES}"
 
 # resolve destination path
-if [[ $FILE_TYPE == "a" ]]; then
+if [[ ! $OVERRIDE_PATH == "" ]]; then
+	DEST_PATH=$OVERRIDE_PATH
+elif [[ $FILE_TYPE == "a" ]]; then
 	DEST_PATH=/home/${USER}/archives/${DEST_DIR}
 else
 	DEST_PATH=/home/${USER}/largeFiles/${DEST_DIR}
@@ -108,18 +116,22 @@ if $TMUX; then
 	exit
 fi
 
-#
-# perf constraint. tar file for user if they can't
-echo -e "[${yellow}WARNING${nc}]: ${yellow}Fortress is a tape archive and works best with a few, large files. Large sets of small files should be compressed into archives with utilities such as htar${nc}"
-read -p "Are you attempting to transfer several small files? (y/n): " confirm && [[ $confirm == [nN] || $confirm == [nN][oO] ]] || FLAG=true
-if $FLAG; then
-	echo -e "[${yellow}WARNING${nc}] Transferring several small files may significantly impact backup performance"
-	read -p "$( echo -e "["${green}"INFO"${nc}"] Would you like to tar the files before backup? (y/n): ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || TAR=true
-	if $TAR; then
-		echo -e "[${red}FATAL${nc}] Please read the warning message and try again. Aborting transfer..."
-		exit 1
-	else
-		TAR=true
+# if backing up dir, tar by default!
+if [[ $FILE_TYPE == "d" ]]; then
+	TAR=true
+else
+	# perf constraint. tar file for user if they can't
+	echo -e "[${yellow}WARNING${nc}]: ${yellow}Fortress is a tape archive and works best with a few, large files. Large sets of small files should be compressed into archives with utilities such as htar${nc}"
+	read -p "Are you attempting to transfer several small files? (y/n): " confirm && [[ $confirm == [nN] || $confirm == [nN][oO] ]] || FLAG=true
+	if $FLAG; then
+		echo -e "[${yellow}WARNING${nc}] Transferring several small files may significantly impact backup performance"
+		read -p "$( echo -e "["${green}"INFO"${nc}"] Would you like to tar the files before backup? (y/n): ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || TAR=true
+		if $TAR; then
+			echo -e "[${red}FATAL${nc}] Please read the warning message and try again. Aborting transfer..."
+			exit 1
+		else
+			TAR=true
+		fi
 	fi
 fi
 
@@ -128,14 +140,19 @@ let filecnt=$(grep -o '.tar' <<< "$SRC_FILES" | wc -l)
 
 # tar files
 if $TAR; then
-	echo -e "[${green}INFO${nc}] Tarring ${filecnt} files..."
-	tar -cf $TAR_FILE $SRC_FILES
-	DEST_PATH=/home/${USER}/archives/${DEST_DIR}
-	FILE_TYPE=a
+	if [[ $FILE_TYPE == "d" ]]; then
+		echo -ne "[${green}INFO${nc}] Tarring dir...\t\t\t"
+	else
+		echo -ne "[${green}INFO${nc}] Tarring ${filecnt} files...\t\t\t"
+	fi
+	tar -cf ${TAR_PATH}/${TAR_FILE} $SRC_FILES
+	echo -e "[${green}DONE${nc}]"
+	# DEST_PATH=/home/${USER}/archives/${DEST_DIR}
+	# FILE_TYPE=a
 fi
 
 # perform sftp txn
-if [[ $FILE_TYPE == "a" ]]; then
+if [[ $FILE_TYPE == "a" ]] || [[ $FILE_TYPE == "d" ]]; then
 	sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
 	put -P ${TAR_PATH}/${TAR_FILE} $DEST_PATH
 	exit
