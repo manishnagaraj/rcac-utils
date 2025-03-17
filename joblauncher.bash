@@ -46,7 +46,7 @@ usage() {
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
 	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
-	echo "-d SCRIPT_DIR: Absolute path to directory containing the python/other code script to be run. Defaults to '${HOME}'"
+	echo "-d SCRIPT_DIR: Absolute path to directory containing the python/other code script to be run. Defaults to '${HOME}/rcac-utils'"
 	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
 	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1"
@@ -120,7 +120,13 @@ DIV=$((${CLUSTER}"_cpu_"${PARTITION}))
 N_NODES=$(((($N_CPUS+$DIV-1))/$DIV))
 
 # control requested CPU count
-REQ_CPUS_PER_GPU=$(($N_CPUS/$N_GPUS))
+if [[ $N_GPUS -gt 0 ]]; then
+	REQ_CPUS_PER_GPU=$(($N_CPUS/$N_GPUS))
+else
+	# does not support cpu-only partitions right now, TODO
+	echo -e "[${red}FATAL${nc}] Launching CPU-only jobs not supported"
+	exit -1
+fi
 MAX_CPUS_PER_GPU=$(($DIV/$((${CLUSTER}"_gpu_"${PARTITION}))))
 if [[ $REQ_CPUS_PER_GPU -gt $MAX_CPUS_PER_GPU ]] && [[ $PARTITION == "cocosys" ]]; then
 	echo -e "[${yellow}WARNING${nc}] Requested number of CPUs per GPU exceeds allowed threshold. Clamping CPU count at threshold value of ${MAX_CPUS_PER_GPU} CPUs/GPU"

@@ -86,9 +86,11 @@ echo "src files: ${SRC_FILES}"
 if [[ ! $OVERRIDE_PATH == "" ]]; then
 	DEST_PATH=$OVERRIDE_PATH
 elif [[ $FILE_TYPE == "a" ]]; then
-	DEST_PATH=/home/${USER}/archives/${DEST_DIR}
+	DEST_PATH=/home/${USER}/archives
+	[[ $DEST_DIR ]] && DEST_PATH+="/"${DEST_DIR} || DEST_PATH=$DEST_PATH
 else
-	DEST_PATH=/home/${USER}/largeFiles/${DEST_DIR}
+	DEST_PATH=/home/${USER}/largeFiles
+	[[ $DEST_DIR ]] && DEST_PATH+="/"${DEST_DIR} || DEST_PATH=$DEST_PATH
 fi
 
 # sanity checks
@@ -117,7 +119,7 @@ if $TMUX; then
 fi
 
 # if backing up dir, tar by default!
-if [[ $FILE_TYPE == "d" ]]; then
+if [[ $FILE_TYPE != "f" ]]; then
 	TAR=true
 else
 	# perf constraint. tar file for user if they can't
@@ -138,25 +140,22 @@ fi
 # count number of files to be tarred
 let filecnt=$(grep -o '.tar' <<< "$SRC_FILES" | wc -l)
 
-# tar files
-if $TAR; then
-	if [[ $FILE_TYPE == "d" ]]; then
-		echo -ne "[${green}INFO${nc}] Tarring dir...\t\t\t"
-	else
-		echo -ne "[${green}INFO${nc}] Tarring ${filecnt} files...\t\t\t"
-	fi
-	tar -cf ${TAR_PATH}/${TAR_FILE} $SRC_FILES
-	echo -e "[${green}DONE${nc}]"
-	# DEST_PATH=/home/${USER}/archives/${DEST_DIR}
-	# FILE_TYPE=a
-fi
-
 # perform sftp txn
-if [[ $FILE_TYPE == "a" ]] || [[ $FILE_TYPE == "d" ]]; then
-	sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
-	put -P ${TAR_PATH}/${TAR_FILE} $DEST_PATH
-	exit
+if [[ $FILE_TYPE != "f" ]] || [[ $TAR ]]; then
+	if [[ $DEST_PATH != "/home/${USER}" ]]; then
+		htar_large -cf ${DEST_PATH}/${TAR_FILE} $SRC_FILES
+	else
+		read -p "$( echo -e "["${yellow}"WARNING"${nc}"] Passwordless backup can not used when backing up files directly into the home directory. Continue? (y/n) ")" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || FLAG=true
+		if $FLAG; then
+			echo -e "[${red}FATAL${nc}] Can not use passwordless auth for backing up into home directory!"
+		else
+			tar -cf ${TAR_PATH}/${TAR_FILE} $SRC_FILES
+			sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
+			put -P ${TAR_PATH}/${TAR_FILE} $DEST_PATH
+			exit
 EOF
+		fi
+	fi
 else
 	files=($SRC_FILES)
 	sftp ${USER}@sftp.fortress.rcac.purdue.edu <<EOF
