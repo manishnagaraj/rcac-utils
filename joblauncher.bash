@@ -37,22 +37,23 @@ MAIL_TYPE=BEGIN,END,FAIL,TIME_LIMIT_90
 
 # file name setup
 JOB_NAME="${USER}_%j"
-OUT_FILE="${HOME}/joboutput/${JOB_NAME}"
-ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
+LOG_PATH="${HOME}/joboutput/"
 
 # usage help message
 usage() {
-	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-n JOB_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-Q QoS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL] [-m]" 1>&2;
+	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-l LOG_PATH] [-e ENV_NAME] [-n JOB_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-Q QoS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL] [-m]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
 	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
 	echo "-d SCRIPT_DIR: Absolute path to directory containing the python/other code script to be run. Defaults to '${HOME}/rcac-utils'"
 	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
+	echo "-l LOG_PATH: Absolute path to logging directory. Defaults to ${HOME}/joboutput"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
 	echo "-n JOB_NAME: Name of the job. Defaults to ${USER}_%j, where %j is the job number"
 	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1"
 	echo -e "-c N_CPUS: Number of CPUs required. Defaults to 14.\n[${yellow}WARNING${nc}] Gautschi restricts N_CPUS to 14 per requested GPU. Supply this arg accordingly"
 	echo "-q QUEUE: SLURM queue to launch job on. Supported values: kaushik, cocosys. Defaults to 'cocosys'"
+	echo "-Q QoS: Quality-of-Service to be associated with the job. Supported values: normal, preemptible. Defaults to 'normal'"
 	echo "-p PARTITION: Name of partition to run on. Defaults to 'ai'"
 	echo -e "-T MAX_TIME: Max job time. After executing for this much time, the job is killed.\n\tSpecify in dd-hh:mm:ss format. Defaults to 6:00:00 (6 hrs)"
 	echo -e "-s SIG_INTERVAL: SIGUSR1 is sent to the user script these many seconds before MAX_TIME is reached. Supported values: [0, 65535]. Defaults to 60.\n[${yellow}WARNING${nc}] Handling of OS signal is left to the user\n"
@@ -64,6 +65,7 @@ usage() {
 N_GPUS=1
 N_CPUS=14
 PARTITION=ai
+QOS_LEVEL=normal
 MAX_TIME=6:00:00
 ENV_NAME=base
 JOB_SUBMISSION_SCRIPT=jobsubmissionscript.sub
@@ -73,18 +75,20 @@ SCRIPT_FILE=helloWorld.py
 SIG_INTERVAL=60
 
 # read args
-while getopts "hj:t:d:f:e:n:g:c:q:p:T:s:m" opts; do
+while getopts "hj:t:d:f:l:e:n:g:c:q:Q:p:T:s:m" opts; do
 	case "${opts}" in
 		h)	usage;;
 		j)	JOB_SUBMISSION_SCRIPT=$OPTARG;;
 		t)	SCRIPT_TYPE=$OPTARG;;
 		d)  SCRIPT_DIR=$OPTARG;;
 		f)	SCRIPT_FILE=$OPTARG;;
+		l)	LOG_PATH=$OPTARG;;
 		e)	ENV_NAME=$OPTARG;;
 		n)	JOB_NAME=$OPTARG;;
 		g)  N_GPUS=$OPTARG;;
 		c)  N_CPUS=$OPTARG;;
 		q)	QUEUE=$OPTARG;;
+		Q)	QOS_LEVEL=$OPTARG;;
 		p)	PARTITION=$OPTARG;;
 		T)	MAX_TIME=$OPTARG;;
 		s)	SIG_INTERVAL=$OPTARG;;
@@ -92,6 +96,10 @@ while getopts "hj:t:d:f:e:n:g:c:q:p:T:s:m" opts; do
 		*)	usage;;
 	esac
 done
+
+# remainder of filename setup
+OUT_FILE="${LOG_PATH}${JOB_NAME}"
+ERR_FILE="${LOG_PATH}${JOB_NAME}"
 
 # sanity checks
 SUPPORTED_SCRIPTS=("bash" "python")
@@ -104,6 +112,12 @@ fi
 SUPPORTED_QUEUES=("kaushik" "cocosys")
 if [[ ! " ${SUPPORTED_QUEUES[@]} " =~ " $QUEUE " ]]; then
 	echo -e "[${red}FATAL${nc}] Unsupported queue"
+	exit 1
+fi
+
+SUPPORTED_QOS_LEVELS=("normal" "preemptible")
+if [[ ! " ${SUPPORTED_QOS_LEVELS[@]} " =~ " $QOS_LEVEL " ]]; then
+	echo -e "[${red}FATAL${nc}] Unsupported QoS"
 	exit 1
 fi
 
@@ -167,7 +181,7 @@ MAIL_ARGS="--mail-type=${MAIL_TYPE} --mail-user=${USER}@purdue.edu"
 #
 #	For more info about sbatch, consult the sbatch man page using "man sbatch"
 sbatch \
-	-p $PARTITION -q normal \
+	-p $PARTITION -q $QOS_LEVEL \
 	${MAIL:+"$MAIL_ARGS"} \
 	--job-name=$JOB_NAME --output="${OUT_FILE}.log" --error="${ERR_FILE}.log" \
 	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@${SIG_INTERVAL} --nodes=$N_NODES --cpus-per-gpu=$CPUS_PER_GPU -A $QUEUE \
