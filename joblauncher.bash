@@ -36,19 +36,20 @@ MAIL=""
 MAIL_TYPE=BEGIN,END,FAIL,TIME_LIMIT_90
 
 # file name setup
-JOB_NAME="${USER}"
+JOB_NAME="${USER}_%j"
 OUT_FILE="${HOME}/joboutput/${JOB_NAME}"
 ERR_FILE="${HOME}/joboutput/${JOB_NAME}"
 
 # usage help message
 usage() {
-	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-Q QoS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL] [-m]" 1>&2;
+	echo -e "\nusage: $0 [-h] [-j JOB_SUBMISSION_SCRIPT] [-t SCRIPT_TYPE] [-d SCRIPT_DIR] [-f SCRIPT_FILE] [-e ENV_NAME] [-n JOB_NAME] [-g N_GPUS] [-c N_CPUS] [-q QUEUE] [-Q QoS] [-p PARTITION] [-T MAX_TIME] [-s SIG_INTERVAL] [-m]" 1>&2;
 	echo "-h: Display help message"
 	echo "-j JOB_SUBMISSION_SCRIPT: Name of job submission script. Defaults to 'jobsubmissionscript.sub'"
 	echo "-t SCRIPT_TYPE: Type of script to execute. Supported values: bash, python. Defaults to 'python'"
 	echo "-d SCRIPT_DIR: Absolute path to directory containing the python/other code script to be run. Defaults to '${HOME}/rcac-utils'"
 	echo "-f SCRIPT_FILE: Name of python file to run. Defaults to helloWorld.py"
 	echo "-e ENV_NAME: Name of the script's conda environment. Defaults to 'base'"
+	echo "-n JOB_NAME: Name of the job. Defaults to ${USER}_%j, where %j is the job number"
 	echo "-g N_GPUS: Number of GPU cards required. Defaults to 1"
 	echo -e "-c N_CPUS: Number of CPUs required. Defaults to 14.\n[${yellow}WARNING${nc}] Gautschi restricts N_CPUS to 14 per requested GPU. Supply this arg accordingly"
 	echo "-q QUEUE: SLURM queue to launch job on. Supported values: kaushik, cocosys. Defaults to 'cocosys'"
@@ -72,7 +73,7 @@ SCRIPT_FILE=helloWorld.py
 SIG_INTERVAL=60
 
 # read args
-while getopts "hj:t:d:f:e:g:c:q:p:T:s:m" opts; do
+while getopts "hj:t:d:f:e:n:g:c:q:p:T:s:m" opts; do
 	case "${opts}" in
 		h)	usage;;
 		j)	JOB_SUBMISSION_SCRIPT=$OPTARG;;
@@ -80,6 +81,7 @@ while getopts "hj:t:d:f:e:g:c:q:p:T:s:m" opts; do
 		d)  SCRIPT_DIR=$OPTARG;;
 		f)	SCRIPT_FILE=$OPTARG;;
 		e)	ENV_NAME=$OPTARG;;
+		n)	JOB_NAME=$OPTARG;;
 		g)  N_GPUS=$OPTARG;;
 		c)  N_CPUS=$OPTARG;;
 		q)	QUEUE=$OPTARG;;
@@ -167,6 +169,6 @@ MAIL_ARGS="--mail-type=${MAIL_TYPE} --mail-user=${USER}@purdue.edu"
 sbatch \
 	-p $PARTITION -q normal \
 	${MAIL:+"$MAIL_ARGS"} \
-	--job-name="${JOB_NAME}_%j" --output="${OUT_FILE}_%j.log" --error="${ERR_FILE}_%j.log" \
+	--job-name=$JOB_NAME --output="${OUT_FILE}.log" --error="${ERR_FILE}.log" \
 	--gpus-per-node=$N_GPUS --gres=gpu:$N_GPUS -t $MAX_TIME --signal=B:SIGUSR1@${SIG_INTERVAL} --nodes=$N_NODES --cpus-per-gpu=$CPUS_PER_GPU -A $QUEUE \
 	$JOB_FILE_PATH/${JOB_SUBMISSION_SCRIPT} -e $ENV_NAME -t $SCRIPT_TYPE -d $SCRIPT_DIR -f $SCRIPT_FILE
