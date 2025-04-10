@@ -75,6 +75,15 @@ module load conda
 # import lmod cuda module to ensure the correct version of pytorch gets installed
 module load cuda
 
+# ensure conda install dir is in scratch
+if [ ! -d "/scratch/${CLUSTER}/${USER}/.conda" ]; then
+    echo -e "[${red}FATAL${nc}] Default conda install dir not in scratch! Re-run setup.bash"
+    exit 1
+else
+    conda config --add pkgs_dirs /scratch/${CLUSTER}/${USER}/.conda/pkgs
+    conda config --add envs_dirs /scratch/${CLUSTER}/${USER}/.conda/envs
+fi
+
 # create env
 conda env create -n $ENV_NAME --file $YML_PATH/${YML_FILENAME}
 

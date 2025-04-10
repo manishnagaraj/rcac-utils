@@ -54,6 +54,13 @@ else
 	echo -e "[${green}INFO${nc}] rcac-utils already in \$PATH. Nothing to do."
 fi
 
+# change default conda dir to prevent home directory from filling up
+mkdir -p /scratch/${CLUSTER}/${USER}/.conda/pkgs
+mkdir -p /scratch/${CLUSTER}/${USER}/.conda/envs
+conda config --add pkgs_dirs /scratch/${CLUSTER}/${USER}/.conda/pkgs
+conda config --add envs_dirs /scratch/${CLUSTER}/${USER}/.conda/envs
+
+# clean up
 echo -ne "Cleaning up...\t\t\t\t"
 echo -e "[${green}DONE${nc}]"
 
