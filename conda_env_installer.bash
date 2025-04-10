@@ -79,7 +79,10 @@ module load cuda
 if [ ! -d "/scratch/${CLUSTER}/${USER}/.conda" ]; then
     echo -e "[${red}FATAL${nc}] Default conda install dir not in scratch! Re-run setup.bash"
     exit 1
-else
+fi
+
+# set default paths if new conda location exists but isn't pointed to
+if ! grep -q "/scratch/${CLUSTER}/${USER}/.conda/pkgs" "$HOME/.condarc"; then
     conda config --add pkgs_dirs /scratch/${CLUSTER}/${USER}/.conda/pkgs
     conda config --add envs_dirs /scratch/${CLUSTER}/${USER}/.conda/envs
 fi
