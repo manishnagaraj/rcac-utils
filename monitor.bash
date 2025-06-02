@@ -24,7 +24,7 @@
 # FILENAME:  monitor
 
 
-# system constants. DO NOT CHANGE
+# system constants. DO NOT MODIFY
 QUEUE=kaushik
 JOB_FILE_PATH=$HOME/rcac-utils
 USER=$(whoami)
@@ -59,13 +59,14 @@ set -- $(stty size) #$1=rows, $2=columns
 
 # create new session
 tmux new-session -s $SESSION_NAME -n $WINDOW_NAME -d -x "$2" -y "$(($1 - 1))"
-tmux send-keys -t $SESSION_NAME 'watch -n 1 squeue -u $USER' C-m
+tmux send-keys -t $SESSION_NAME 'watch -n 10 squeue -u $USER' C-m
 
 #rename pane 0
 tmux set -p @mytitle "squeue"
 
 # split window vertically
 tmux split-window -v
+tmux send-keys -t $SESSION_NAME 'squeue -a -p cocosys' C-m
 tmux send-keys -t $SESSION_NAME 'squeue -a -p ai' C-m
 
 #rename pane 1

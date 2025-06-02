@@ -62,7 +62,7 @@ usage() {
 
 # arg init
 ENV_NAME=base
-SCRIPT_DIR=$HOME
+SCRIPT_DIR=$HOME/rcac-utils
 SCRIPT_TYPE=python
 SCRIPT_FILE=helloWorld.py
 

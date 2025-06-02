@@ -26,7 +26,7 @@
 # necessary loading. DO NOT MODIFY
 source config_rcac.bash
 
-# system constants. DO NOT CHANGE
+# system constants. DO NOT MODIFY
 USER=$(whoami)
 FLAG=false
 
@@ -74,6 +74,18 @@ fi
 module load conda
 # import lmod cuda module to ensure the correct version of pytorch gets installed
 module load cuda
+
+# ensure conda install dir is in scratch
+if [ ! -d "/scratch/${CLUSTER}/${USER}/.conda" ]; then
+    echo -e "[${red}FATAL${nc}] Default conda install dir not in scratch! Re-run setup.bash"
+    exit 1
+fi
+
+# set default paths if new conda location exists but isn't pointed to
+if ! grep -q "/scratch/${CLUSTER}/${USER}/.conda/pkgs" "$HOME/.condarc"; then
+    conda config --add pkgs_dirs /scratch/${CLUSTER}/${USER}/.conda/pkgs
+    conda config --add envs_dirs /scratch/${CLUSTER}/${USER}/.conda/envs
+fi
 
 # create env
 conda env create -n $ENV_NAME --file $YML_PATH/${YML_FILENAME}

@@ -45,7 +45,37 @@ bash setup.bash
 NOTE: For path invariance, the setup script will automatically move the cloned repo to your home directory (<code>/home/$USER</code>)
 
 ---
+<h3> TLDR </h3>
+To launch a job on the cluster, consider the following case:
+
+The file <code>setup.bash</code> has been executed and all paths have been setup correctly (Note that at this point, this repository will be located in <code>/home/$USER</code>). The script file <code>file.py</code>, located in directory <code>/home/$USER/test</code> is to be executed in a conda environment named <code>env</code>.
+
+Let us assume that the script requires 2 GPU cards, and as many CPUs as possible (14*N_GPU=28. For info on why 28, read the help message of joblauncher.bash)
+
+Let us also assume that the script is to be run on the "cocosys" partition using the "cocosys" queue and that the user estimates a max runtime of 2.5 days. Additionally, the user determines that, in case the job runs for longer than 2.5 days, the necessary checkpoint and metadata saving will take ~97 seconds.
+
+Given these considerations, the job should be launched using the following command:
+
+```
+bash joblauncher.bash -j jobsubmissionscript.sub -t python -d ~/test/ -f file.py -e env -g 2 -c 28 -q cocosys -p cocosys -T 2-12:00:00 -s 97
+```
+
+If email updates of job status are desired, then the <code>-m</code> flag should be added to the previous command.
+
+A detailed list of command line args accepted by this script (or any of the scripts in this repo) may be found using
+```
+bash joblauncher.bash -h
+```
+
+NOTE: If your job is stuck in queue for a very long time, or if <code>scontrol show job $JOB_ID</code> contains the following message:
+```
+JobState=PENDING Reason=ReqNodeNotAvail,_Reserved_for_maintenance
+```
+then the cluster may be down. For updates regarding cluster status, please check the RCAC website <a href="https://www.rcac.purdue.edu/news/outages-and-maintenance?state=all&order_dir=desc">here</a>
+
+---
 <h3> Scripts </h3>
+
 <h4> Setup Conda </h4>
 RCAC clusters require use of the IT-managed conda module loadable using Lmod. While installing conda locally in your own directory <code>/home/$USER/</code> is possible, environments installed using your own conda installation will not be importable in code, i.e., they will not work.
 
@@ -98,6 +128,12 @@ A Job Submission Script is supposed to do three main things:
 More information on job submission scripts, specifically for RCAC clusters, may be found <a href="https://www.rcac.purdue.edu/knowledge/gautschi/run/slurm/script">here</a>.
 
 <h4> Launching a Job </h4>
+To abstract out the details of the <code>sbatch</code> and <code>srun</code> SLURM commands, this repo provides a util script <code>joblauncher.bash</code>. A detailed list of command line args accepted by this script may be found using
+
+```
+bash joblauncher.bash -h
+```
+
 Jobs are launched using either the <code>srun</code> or the <code>sbatch</code> commands. Both these commands accept the same set of parameters.  The main difference is that <code>srun</code> is interactive and blocking (you get the result in your terminal and you cannot write other commands until it is finished), while <code>sbatch</code> is batch processing and non-blocking (results are written to a file and you can submit other commands right away).
 
 If you use <code>srun</code> in the background with the & sign, then you remove the 'blocking' feature of <code>srun</code>, which becomes interactive but non-blocking. It is still interactive though, meaning that the output will clutter your terminal, and the <code>srun</code> processes are linked to your terminal. If you disconnect, you will loose control over them, or they might be killed (depending on whether they use stdout or not basically). And they will be killed if the machine to which you connect to submit jobs is rebooted.
@@ -199,4 +235,7 @@ To cancel a running/pending job, use
 ```
 scancel $JOB_ID
 ```
+---
+<h3> Common Pitfalls </h3>
+Take a look at the issues for answers to the most common pitfalls. If your problem does not appear there, do raise a fresh issue!
 
