@@ -60,6 +60,13 @@ mkdir -p /scratch/${CLUSTER}/${USER}/.conda/envs
 conda config --add pkgs_dirs /scratch/${CLUSTER}/${USER}/.conda/pkgs
 conda config --add envs_dirs /scratch/${CLUSTER}/${USER}/.conda/envs
 
+# add auto env export script to crontab
+echo -ne "Setting up automatic conda env export...\t\t"
+mkdir $HOME/ymls
+ssh $USER@login01.gautschi.rcac.purdue.edu 'crontab < $HOME/rcac-utils/.crontab'
+echo -e "[${green}INFO${nc}] Automatic conda environment export set up. Export will run at 23:45 everyday and YML files will be saved in $HOME/ymls"
+echo -e "[${green}DONE${nc}]"
+
 # clean up
 echo -ne "Cleaning up...\t\t\t\t"
 echo -e "[${green}DONE${nc}]"
