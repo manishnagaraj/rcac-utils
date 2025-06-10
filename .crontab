@@ -1,0 +1,1 @@
+45 23 * * * bash $HOME/rcac-utils/auto_env_export.bash
